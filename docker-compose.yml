@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apsilva-bed-fastapi-lab-api
+    ports:
+      - "${PROJECT_PORT:-8000}:8000"
+    environment:
+      PYTHONPATH: /app
+      PROJECT_HOST: ${PROJECT_HOST:-apsilva-bed-fastapi-lab.localhost}
+      PROJECT_PORT: ${PROJECT_PORT:-8000}
+    volumes:
+      - ./:/app
+    restart: unless-stopped
