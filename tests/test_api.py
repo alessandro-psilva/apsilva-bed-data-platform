@@ -199,3 +199,67 @@ def test_databricks_jobs_success_with_vault_secret(monkeypatch) -> None:
             "next_offset": None,
         },
     }
+
+
+def test_databricks_run_job_without_parameters(monkeypatch) -> None:
+    monkeypatch.setenv("DATABRICKS_WORKSPACE_NAME", "dbwawsdv")
+    monkeypatch.setenv("DATABRICKS_WORKSPACE", "https://dbc-ffed086d-34da.cloud.databricks.com/")
+    monkeypatch.setenv("DATABRICKS_TOKEN", "test-token")
+    get_settings.cache_clear()
+
+    class FakeRunResponse:
+        def as_dict(self) -> dict:
+            return {"run_id": 12345, "number_in_job": 7}
+
+    class FakeJobsAPI:
+        def run_now(self, **kwargs):
+            assert kwargs == {"job_id": 123}
+            return FakeRunResponse()
+
+        def list(self, **kwargs):
+            return []
+
+    class FakeWorkspaceClient:
+        def __init__(self, host: str, token: str) -> None:
+            self.jobs = FakeJobsAPI()
+
+    monkeypatch.setattr("app.services.databricks.WorkspaceClient", FakeWorkspaceClient)
+
+    response = client.post("/databricks/jobs/123/run")
+    assert response.status_code == 200
+    assert response.json() == {"run_id": 12345, "number_in_job": 7}
+
+
+def test_databricks_run_job_with_parameters(monkeypatch) -> None:
+    monkeypatch.setenv("DATABRICKS_WORKSPACE_NAME", "dbwawsdv")
+    monkeypatch.setenv("DATABRICKS_WORKSPACE", "https://dbc-ffed086d-34da.cloud.databricks.com/")
+    monkeypatch.setenv("DATABRICKS_TOKEN", "test-token")
+    get_settings.cache_clear()
+
+    class FakeRunResponse:
+        def as_dict(self) -> dict:
+            return {"run_id": 67890}
+
+    class FakeJobsAPI:
+        def run_now(self, **kwargs):
+            assert kwargs == {
+                "job_id": 456,
+                "job_parameters": {"country": "br", "mode": "full"},
+            }
+            return FakeRunResponse()
+
+        def list(self, **kwargs):
+            return []
+
+    class FakeWorkspaceClient:
+        def __init__(self, host: str, token: str) -> None:
+            self.jobs = FakeJobsAPI()
+
+    monkeypatch.setattr("app.services.databricks.WorkspaceClient", FakeWorkspaceClient)
+
+    response = client.post(
+        "/databricks/jobs/456/run",
+        json={"parameters": {"country": "br", "mode": "full"}},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"run_id": 67890}

@@ -44,6 +44,7 @@ docker compose up --build
 
 - `GET /health`
 - `GET /databricks/jobs`
+- `POST /databricks/jobs/{job_id}/run`
 
 Parâmetros de query em `/databricks/jobs`:
 
@@ -55,6 +56,20 @@ Exemplo:
 
 ```bash
 curl -s "http://apsilva-bed-data-platform.localhost:8000/databricks/jobs?limit=10&offset=0"
+```
+
+Disparar job sem parâmetros:
+
+```bash
+curl -s -X POST "http://apsilva-bed-data-platform.localhost:8000/databricks/jobs/123/run"
+```
+
+Disparar job com parâmetros:
+
+```bash
+curl -s -X POST "http://apsilva-bed-data-platform.localhost:8000/databricks/jobs/123/run" \
+	-H "Content-Type: application/json" \
+	-d '{"parameters":{"country":"br","mode":"full"}}'
 ```
 
 Resposta:

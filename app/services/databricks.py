@@ -75,12 +75,12 @@ def _validate_settings() -> tuple[str, str, str]:
     return workspace_name, workspace_url, token
 
 
-def _job_to_dict(job: Any) -> dict[str, Any]:
-    if hasattr(job, "as_dict"):
-        return job.as_dict()
-    if hasattr(job, "as_shallow_dict"):
-        return job.as_shallow_dict()
-    return {"value": str(job)}
+def _model_to_dict(model: Any) -> dict[str, Any]:
+    if hasattr(model, "as_dict"):
+        return model.as_dict()
+    if hasattr(model, "as_shallow_dict"):
+        return model.as_shallow_dict()
+    return {"value": str(model)}
 
 
 def _has_next_page(client: WorkspaceClient, current_offset: int, returned: int) -> bool:
@@ -106,7 +106,7 @@ def list_jobs(*, limit: int | None = None, offset: int | None = None, expand_tas
 
     try:
         client = WorkspaceClient(host=workspace_url, token=token)
-        jobs = [_job_to_dict(job) for job in client.jobs.list(**list_kwargs)]
+        jobs = [_model_to_dict(job) for job in client.jobs.list(**list_kwargs)]
     except Exception as exc:
         status_code = _extract_status_code(exc)
         raise DatabricksRequestError(
@@ -138,3 +138,35 @@ def list_jobs(*, limit: int | None = None, offset: int | None = None, expand_tas
             "next_offset": next_offset,
         },
     }
+
+
+def run_job(*, job_id: int, parameters: dict[str, str] | None = None) -> dict[str, Any]:
+    _workspace_name, workspace_url, token = _validate_settings()
+
+    run_kwargs: dict[str, Any] = {"job_id": job_id}
+    if parameters:
+        run_kwargs["job_parameters"] = parameters
+
+    try:
+        client = WorkspaceClient(host=workspace_url, token=token)
+        run_response = client.jobs.run_now(**run_kwargs)
+    except TypeError as exc:
+        if not parameters:
+            raise DatabricksRequestError(f"Databricks SDK error: {exc}") from exc
+        try:
+            # Compatibility fallback for SDK versions that do not support job_parameters.
+            run_response = client.jobs.run_now(job_id=job_id, notebook_params=parameters)
+        except Exception as inner_exc:
+            status_code = _extract_status_code(inner_exc)
+            raise DatabricksRequestError(
+                f"Databricks SDK error: {inner_exc}",
+                status_code=status_code,
+            ) from inner_exc
+    except Exception as exc:
+        status_code = _extract_status_code(exc)
+        raise DatabricksRequestError(
+            f"Databricks SDK error: {exc}",
+            status_code=status_code,
+        ) from exc
+
+    return _model_to_dict(run_response)
