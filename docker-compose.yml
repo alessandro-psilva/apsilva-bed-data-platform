@@ -3,13 +3,40 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: apsilva-bed-fastapi-lab-api
+    container_name: apsilva-bed-data-platform-api
     ports:
       - "${PROJECT_PORT:-8000}:8000"
     environment:
       PYTHONPATH: /app
-      PROJECT_HOST: ${PROJECT_HOST:-apsilva-bed-fastapi-lab.localhost}
+      PROJECT_HOST: ${PROJECT_HOST:-apsilva-bed-data-platform.localhost}
       PROJECT_PORT: ${PROJECT_PORT:-8000}
+      APP_ENV: ${APP_ENV:-docker}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SECRET_BACKEND: ${SECRET_BACKEND:-env}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_TOKEN: ${VAULT_TOKEN:-dev-root-token}
+      VAULT_KV_MOUNT: ${VAULT_KV_MOUNT:-secret}
+      VAULT_SECRET_VALUE_KEY: ${VAULT_SECRET_VALUE_KEY:-value}
     volumes:
       - ./:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: apsilva-bed-data-platform-vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-dev-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    command: vault server -dev
     restart: unless-stopped

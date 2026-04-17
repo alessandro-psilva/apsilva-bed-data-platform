@@ -1,16 +1,19 @@
 from fastapi import FastAPI
 
 from app.api.router import api_router
-from app.config import PROJECT_PORT, get_base_url
+from app.config import get_base_url, get_settings
+
+
+settings = get_settings()
 
 
 app = FastAPI(
-    title="apsilva-bed-fastapi-lab",
+    title=settings.project_name,
     version="0.1.0",
-    description="Backend-only FastAPI lab running with Docker.",
+    description="Data platform API for Databricks integration running with Docker.",
     servers=[
         {"url": get_base_url(), "description": "Project host"},
-        {"url": f"http://localhost:{PROJECT_PORT}", "description": "Localhost"},
+        {"url": f"http://localhost:{settings.project_port}", "description": "Localhost"},
     ],
 )
 

@@ -1,26 +1,32 @@
-# apsilva-bed-fastapi-lab
+# apsilva-bed-data-platform
 
-Projeto backend-only com FastAPI, executado sempre com Docker.
-
-Guia de desenvolvimento: ver `DEVELOPMENT.md`.
+API FastAPI para consultar jobs do Databricks com execução docker-first.
 
 ## Requisitos
 
 - Docker
 - Docker Compose
 
-## Parametros do projeto
+## Configuração
 
-O projeto usa estes parametros em runtime:
-
-- `PROJECT_HOST`
-- `PROJECT_PORT`
-
-Exemplo alterando os parametros sem editar codigo:
+Crie seu arquivo de ambiente:
 
 ```bash
-PROJECT_HOST=meu-lab.localhost PROJECT_PORT=8010 docker compose up --build
+cp .env.example .env
 ```
+
+Variáveis principais:
+
+- `PROJECT_HOST` (padrão: `apsilva-bed-data-platform.localhost`)
+- `PROJECT_PORT` (padrão: `8000`)
+- `APP_ENV` (padrão: `docker`)
+- `LOG_LEVEL` (padrão: `info`)
+- `SECRET_BACKEND` (`env` ou `vault`)
+- `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_KV_MOUNT`, `VAULT_SECRET_VALUE_KEY`
+- `DATABRICKS_WORKSPACE_NAME`
+- `DATABRICKS_WORKSPACE`
+- `DATABRICKS_TOKEN`
+- `DATABRICKS_TOKEN_SECRET_NAME` (padrão: `databricks_token`)
 
 ## Executar
 
@@ -28,28 +34,79 @@ PROJECT_HOST=meu-lab.localhost PROJECT_PORT=8010 docker compose up --build
 docker compose up --build
 ```
 
-## Host com nome do projeto
-
-Use `apsilva-bed-fastapi-lab.localhost`. Esse dominio resolve localmente sem editar `/etc/hosts`.
-
 ## Acessos
 
-- API: http://apsilva-bed-fastapi-lab.localhost:8000
-- Docs Swagger: http://apsilva-bed-fastapi-lab.localhost:8000/docs
-- Healthcheck: http://apsilva-bed-fastapi-lab.localhost:8000/health
+- API: http://apsilva-bed-data-platform.localhost:8000
+- Swagger: http://apsilva-bed-data-platform.localhost:8000/docs
+- Health: http://apsilva-bed-data-platform.localhost:8000/health
 
-## Endpoints disponíveis
+## Endpoints
 
 - `GET /health`
-- `GET /info`
-- `POST /echo`
+- `GET /databricks/jobs`
 
-## Exemplos rápidos
+Parâmetros de query em `/databricks/jobs`:
+
+- `limit` (padrão: `25`, min: `1`, max: `100`)
+- `offset` (padrão: `0`)
+- `expand_tasks` (padrão: `false`)
+
+Exemplo:
 
 ```bash
-curl -s http://apsilva-bed-fastapi-lab.localhost:8000/health
-curl -s http://apsilva-bed-fastapi-lab.localhost:8000/info
-curl -s -X POST http://apsilva-bed-fastapi-lab.localhost:8000/echo -H "Content-Type: application/json" -d '{"message":"hello"}'
+curl -s "http://apsilva-bed-data-platform.localhost:8000/databricks/jobs?limit=10&offset=0"
+```
+
+Resposta:
+
+```json
+{
+	"items": [
+		{
+			"job_id": 123,
+			"settings": {
+				"name": "daily-import"
+			}
+		}
+	],
+	"pagination": {
+		"limit": 10,
+		"offset": 0,
+		"returned": 1,
+		"has_more": false,
+		"next_offset": null
+	}
+}
+```
+
+## Usar Vault local para token Databricks
+
+No `.env`, configure:
+
+```env
+SECRET_BACKEND=vault
+VAULT_ADDR=http://vault:8200
+VAULT_TOKEN=dev-root-token
+VAULT_KV_MOUNT=secret
+VAULT_SECRET_VALUE_KEY=value
+DATABRICKS_TOKEN_SECRET_NAME=databricks_token
+```
+
+Grave o token no Vault:
+
+```bash
+curl -s \
+	-H "X-Vault-Token: dev-root-token" \
+	-H "Content-Type: application/json" \
+	-X POST \
+	-d '{"data":{"value":"<seu-databricks-token>"}}' \
+	http://localhost:8200/v1/secret/data/databricks_token
+```
+
+## Testes
+
+```bash
+docker compose run --rm api pytest -q tests
 ```
 
 ## Parar
