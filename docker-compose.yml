@@ -5,18 +5,19 @@ services:
       dockerfile: Dockerfile
     container_name: apsilva-bed-data-platform-api
     ports:
-      - "${PROJECT_PORT:-8000}:8000"
+      - "${PROJECT_PORT?PROJECT_PORT is required in .env}:8000"
     environment:
       PYTHONPATH: /app
-      PROJECT_HOST: ${PROJECT_HOST:-apsilva-bed-data-platform.localhost}
-      PROJECT_PORT: ${PROJECT_PORT:-8000}
-      APP_ENV: ${APP_ENV:-docker}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      SECRET_BACKEND: ${SECRET_BACKEND:-env}
-      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
-      VAULT_TOKEN: ${VAULT_TOKEN:-dev-root-token}
-      VAULT_KV_MOUNT: ${VAULT_KV_MOUNT:-secret}
-      VAULT_SECRET_VALUE_KEY: ${VAULT_SECRET_VALUE_KEY:-value}
+      PROJECT_HOST: ${PROJECT_HOST?PROJECT_HOST is required in .env}
+      PROJECT_PORT: ${PROJECT_PORT?PROJECT_PORT is required in .env}
+      APP_ENV: ${APP_ENV?APP_ENV is required in .env}
+      LOG_LEVEL: ${LOG_LEVEL?LOG_LEVEL is required in .env}
+      SECRET_BACKEND: ${SECRET_BACKEND?SECRET_BACKEND is required in .env}
+      VAULT_ADDR: ${VAULT_ADDR?VAULT_ADDR is required in .env}
+      VAULT_TOKEN: ${VAULT_TOKEN?VAULT_TOKEN is required in .env}
+      VAULT_KV_MOUNT: ${VAULT_KV_MOUNT?VAULT_KV_MOUNT is required in .env}
+      VAULT_SECRET_VALUE_KEY: ${VAULT_SECRET_VALUE_KEY?VAULT_SECRET_VALUE_KEY is required in .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS?CORS_ALLOWED_ORIGINS is required in .env}
     volumes:
       - ./:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -27,6 +28,8 @@ services:
       retries: 3
       start_period: 10s
     restart: unless-stopped
+    networks:
+      - shared-platform-net
 
   vault:
     image: hashicorp/vault:1.17
@@ -34,9 +37,16 @@ services:
     ports:
       - "8200:8200"
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-dev-root-token}
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN?VAULT_TOKEN is required in .env}
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
     cap_add:
       - IPC_LOCK
     command: vault server -dev
     restart: unless-stopped
+    networks:
+      - shared-platform-net
+
+networks:
+  shared-platform-net:
+    name: apsilva-platform-network
+    external: false

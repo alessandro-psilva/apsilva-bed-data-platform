@@ -76,10 +76,47 @@ def _validate_settings() -> tuple[str, str, str]:
 
 
 def _model_to_dict(model: Any) -> dict[str, Any]:
-    if hasattr(model, "as_dict"):
+    """Convert Databricks SDK model to dictionary."""
+    import inspect
+    
+    # Try as_dict() method
+    try:
         return model.as_dict()
-    if hasattr(model, "as_shallow_dict"):
+    except (AttributeError, KeyError, TypeError):
+        pass
+    
+    # Try as_shallow_dict() method
+    try:
         return model.as_shallow_dict()
+    except (AttributeError, KeyError, TypeError):
+        pass
+    
+    # Try vars() - works for most Python objects, filtering out methods and privates
+    try:
+        result = {}
+        for key, value in vars(model).items():
+            # Skip private attributes and methods
+            if not key.startswith('_') and not inspect.ismethod(value) and not inspect.isfunction(value):
+                result[key] = value
+        if result:
+            return result
+    except TypeError:
+        pass
+    
+    # Try dict(model.__dict__) with filtering
+    try:
+        if hasattr(model, "__dict__"):
+            result = {}
+            for key, value in model.__dict__.items():
+                # Skip private attributes and methods
+                if not key.startswith('_') and not inspect.ismethod(value) and not inspect.isfunction(value):
+                    result[key] = value
+            if result:
+                return result
+    except (TypeError, ValueError, KeyError):
+        pass
+    
+    # Last resort: return as string wrapped in dict
     return {"value": str(model)}
 
 
@@ -169,4 +206,25 @@ def run_job(*, job_id: int, parameters: dict[str, str] | None = None) -> dict[st
             status_code=status_code,
         ) from exc
 
-    return _model_to_dict(run_response)
+    response = _model_to_dict(run_response)
+
+    nested_raw = response.get("response")
+    if isinstance(nested_raw, dict):
+        nested_response = nested_raw
+    else:
+        nested_response = {
+            "run_id": getattr(nested_raw, "run_id", None),
+            "number_in_job": getattr(nested_raw, "number_in_job", None),
+        }
+    run_id = (
+        response.get("run_id")
+        or response.get("number_in_job")
+        or nested_response.get("run_id")
+        or nested_response.get("number_in_job")
+    )
+    if run_id is not None:
+        workspace_base = workspace_url.rstrip("/")
+        response["run_id"] = run_id
+        response["run_url"] = f"{workspace_base}/jobs/{job_id}/runs/{run_id}"
+
+    return response

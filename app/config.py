@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     databricks_workspace: str = ""
     databricks_token: str = ""
     databricks_token_secret_name: str = "databricks_token"
+    cors_allowed_origins: str = "http://localhost:8080,http://127.0.0.1:8080,http://apsilva-fed-data-platform.localhost:8080"
 
     model_config = SettingsConfigDict(
         env_file=".env",
