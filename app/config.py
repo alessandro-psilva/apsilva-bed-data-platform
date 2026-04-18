@@ -14,11 +14,15 @@ class Settings(BaseSettings):
     vault_token: str = "dev-root-token"
     vault_kv_mount: str = "secret"
     vault_secret_value_key: str = "value"
+    database_url: str = ""
     databricks_workspace_name: str = ""
     databricks_workspace: str = ""
     databricks_token: str = ""
     databricks_token_secret_name: str = "databricks_token"
     cors_allowed_origins: str = "http://localhost:8080,http://127.0.0.1:8080,http://apsilva-fed-data-platform.localhost:8080"
+    data_ingestion_allowed_schema: str = "ingestion"
+    data_ingestion_allowed_volume: str = "raw"
+    data_ingestion_max_upload_mb: int = 15
 
     model_config = SettingsConfigDict(
         env_file=".env",

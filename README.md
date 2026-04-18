@@ -23,6 +23,11 @@ Variáveis principais:
 - `LOG_LEVEL` (padrão: `info`)
 - `SECRET_BACKEND` (`env` ou `vault`)
 - `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_KV_MOUNT`, `VAULT_SECRET_VALUE_KEY`
+- `DATABASE_URL` (PostgreSQL para historico de uploads)
+- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+- `DATA_INGESTION_ALLOWED_SCHEMA` (padrão: `ingestion`)
+- `DATA_INGESTION_ALLOWED_VOLUME` (padrão: `raw`)
+- `DATA_INGESTION_MAX_UPLOAD_MB` (padrão: `15`)
 - `DATABRICKS_WORKSPACE_NAME`
 - `DATABRICKS_WORKSPACE`
 - `DATABRICKS_TOKEN`
@@ -45,6 +50,10 @@ docker compose up --build
 - `GET /health`
 - `GET /databricks/jobs`
 - `POST /databricks/jobs/{job_id}/run`
+- `GET /databricks/run-history`
+- `GET /data-ingestion/volumes`
+- `GET /data-ingestion/upload-history`
+- `POST /data-ingestion/volumes/{catalog_name}/{schema_name}/{volume_name}/files`
 
 Parâmetros de query em `/databricks/jobs`:
 
