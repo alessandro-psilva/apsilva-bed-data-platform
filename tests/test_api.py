@@ -103,6 +103,52 @@ def test_databricks_jobs_query_params_and_has_more(monkeypatch) -> None:
             "returned": 2,
             "has_more": True,
             "next_offset": 12,
+            "next_page_id": 12,
+        },
+    }
+
+
+def test_databricks_jobs_next_page_id_query_param(monkeypatch) -> None:
+    monkeypatch.setenv("DATABRICKS_WORKSPACE_NAME", "dbwawsdv")
+    monkeypatch.setenv("DATABRICKS_WORKSPACE", "https://dbc-ffed086d-34da.cloud.databricks.com/")
+    monkeypatch.setenv("DATABRICKS_TOKEN", "test-token")
+    get_settings.cache_clear()
+
+    class FakeJob:
+        def as_dict(self) -> dict:
+            return {
+                "job_id": 21,
+                "settings": {"name": "job-21"},
+            }
+
+    class FakeJobsAPI:
+        def list(self, **kwargs):
+            if kwargs == {"limit": 1, "offset": 20, "expand_tasks": True}:
+                return [FakeJob()]
+            if kwargs == {"limit": 1, "offset": 21}:
+                return []
+            raise AssertionError(f"Unexpected list kwargs: {kwargs}")
+
+    class FakeWorkspaceClient:
+        def __init__(self, host: str, token: str) -> None:
+            self.jobs = FakeJobsAPI()
+
+    monkeypatch.setattr("app.services.databricks.WorkspaceClient", FakeWorkspaceClient)
+
+    # next_page_id must drive pagination position.
+    response = client.get("/databricks/jobs?limit=1&offset=0&next_page_id=20&expand_tasks=true")
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {"job_id": 21, "settings": {"name": "job-21"}},
+        ],
+        "pagination": {
+            "limit": 1,
+            "offset": 20,
+            "returned": 1,
+            "has_more": False,
+            "next_offset": None,
+            "next_page_id": None,
         },
     }
 

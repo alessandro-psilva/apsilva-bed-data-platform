@@ -23,10 +23,17 @@ class RunJobRequest(BaseModel):
 def read_databricks_jobs(
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    next_page_id: int | None = Query(default=None, ge=0),
     expand_tasks: bool = Query(default=False),
 ) -> dict[str, Any]:
+    effective_offset = next_page_id if next_page_id is not None else offset
+
     try:
-        return list_jobs(limit=limit, offset=offset, expand_tasks=expand_tasks)
+        payload = list_jobs(limit=limit, offset=effective_offset, expand_tasks=expand_tasks)
+        pagination = payload.get("pagination")
+        if isinstance(pagination, dict):
+            pagination["next_page_id"] = pagination.get("next_offset")
+        return payload
     except DatabricksConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except DatabricksRequestError as exc:
